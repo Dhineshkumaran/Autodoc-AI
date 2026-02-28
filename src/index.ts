@@ -17,7 +17,7 @@ const configLoader = new ConfigLoader();
 program
     .name('autodoc-ai')
     .description('AI-Powered Project Documentation Generator')
-    .version('1.0.0');
+    .version('1.1.0');
 
 program
     .command('init')
@@ -32,40 +32,28 @@ program
             'ollama': ['llama3', 'mistral', 'phi3', 'gemma']
         };
 
-        const { provider } = await inquirer.prompt([
+        const answers = await inquirer.prompt([
             {
                 type: 'list',
                 name: 'provider',
                 message: 'Select an LLM provider:',
                 choices: ['claude', 'openai', 'groq', 'ollama'],
                 default: 'claude'
-            }
-        ]);
-
-        const { modelSelection } = await inquirer.prompt([
+            },
             {
                 type: 'list',
                 name: 'modelSelection',
-                message: `Select a model for ${provider}:`,
-                choices: [...(providerModels[provider as keyof typeof providerModels] || []), 'Other...'],
-                default: (providerModels[provider as keyof typeof providerModels] || [])[0]
-            }
-        ]);
-
-        let model = modelSelection;
-        if (modelSelection === 'Other...') {
-            const { customModel } = await inquirer.prompt([
-                {
-                    type: 'input',
-                    name: 'customModel',
-                    message: 'Enter the custom model name:',
-                    validate: (input: string) => input.length > 0 || 'Model name cannot be empty'
-                }
-            ]);
-            model = customModel;
-        }
-
-        const { output } = await inquirer.prompt([
+                message: (hash: any) => `Select a model for ${hash.provider}:`,
+                choices: (hash: any) => [...(providerModels[hash.provider] || []), 'Other...'],
+                default: (hash: any) => (providerModels[hash.provider] || [])[0]
+            },
+            {
+                type: 'input',
+                name: 'customModel',
+                message: 'Enter the custom model name:',
+                when: (hash: any) => hash.modelSelection === 'Other...',
+                validate: (input: string) => input.length > 0 || 'Model name cannot be empty'
+            },
             {
                 type: 'input',
                 name: 'output',
@@ -74,7 +62,11 @@ program
             }
         ]);
 
-        const answers = { provider, model, output };
+        const finalConfig = {
+            provider: answers.provider,
+            model: answers.customModel || answers.modelSelection,
+            output: answers.output
+        };
 
         const configPath = path.join(process.cwd(), '.autodocrc.json');
 
@@ -87,14 +79,13 @@ program
                     default: false
                 }
             ]);
-
             if (!overwrite) {
                 console.log('Action cancelled.');
                 return;
             }
         }
 
-        fs.writeFileSync(configPath, JSON.stringify(answers, null, 4));
+        fs.writeFileSync(configPath, JSON.stringify(finalConfig, null, 4));
         console.log(`Configuration saved to ${configPath}`);
         console.log('You can now run "autodoc-ai generate" to start creating documentation.');
     });
