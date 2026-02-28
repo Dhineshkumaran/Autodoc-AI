@@ -25,28 +25,47 @@ program
     .action(async () => {
         console.log('--- Autodoc-AI Initialization ---');
 
-        const answers = await inquirer.prompt([
+        const providerModels: Record<string, string[]> = {
+            'claude': ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
+            'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+            'groq': ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
+            'ollama': ['llama3', 'mistral', 'phi3', 'gemma']
+        };
+
+        const { provider } = await inquirer.prompt([
             {
                 type: 'list',
                 name: 'provider',
                 message: 'Select an LLM provider:',
                 choices: ['claude', 'openai', 'groq', 'ollama'],
                 default: 'claude'
-            },
+            }
+        ]);
+
+        const { modelSelection } = await inquirer.prompt([
             {
-                type: 'input',
-                name: 'model',
-                message: 'Enter the model name (leave blank for recommended default):',
-                default: (answers: any) => {
-                    const defaults: Record<string, string> = {
-                        'claude': 'claude-3-5-sonnet-20240620',
-                        'openai': 'gpt-4o',
-                        'groq': 'llama-3.3-70b-versatile',
-                        'ollama': 'llama3'
-                    };
-                    return defaults[answers.provider];
+                type: 'list',
+                name: 'modelSelection',
+                message: `Select a model for ${provider}:`,
+                choices: [...(providerModels[provider as keyof typeof providerModels] || []), 'Other...'],
+                default: (providerModels[provider as keyof typeof providerModels] || [])[0]
+            }
+        ]);
+
+        let model = modelSelection;
+        if (modelSelection === 'Other...') {
+            const { customModel } = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'customModel',
+                    message: 'Enter the custom model name:',
+                    validate: (input: string) => input.length > 0 || 'Model name cannot be empty'
                 }
-            },
+            ]);
+            model = customModel;
+        }
+
+        const { output } = await inquirer.prompt([
             {
                 type: 'input',
                 name: 'output',
@@ -54,6 +73,8 @@ program
                 default: './docs'
             }
         ]);
+
+        const answers = { provider, model, output };
 
         const configPath = path.join(process.cwd(), '.autodocrc.json');
 
