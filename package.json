@@ -1,6 +1,6 @@
 {
   "name": "autodoc-ai",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "AI-Powered Project Documentation Generator using LLMs (Claude, OpenAI, Groq, Ollama)",
   "main": "dist/index.js",
